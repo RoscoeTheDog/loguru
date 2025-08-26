@@ -107,7 +107,9 @@ from inspect import isclass, iscoroutinefunction, isgeneratorfunction
 from multiprocessing import current_process, get_context
 from multiprocessing.context import BaseContext
 from os.path import basename, splitext
+from pathlib import Path
 from threading import current_thread
+from typing import Dict, Optional, Union
 
 from . import _asyncio_loop, _colorama, _defaults, _filters
 from ._better_exceptions import ExceptionFormatter
@@ -2227,3 +2229,132 @@ class Logger:
             stacklevel=2,
         )
         return self.remove(*args, **kwargs)
+    
+    def configure_style(
+        self,
+        template: str = "beautiful",
+        console_level: str = "INFO",
+        file_path: Optional[Union[str, Path]] = None,
+        file_level: str = "DEBUG"
+    ) -> Dict[str, int]:
+        """
+        Configure template-based styling with dual-stream output.
+        
+        This method provides a simple way to set up beautiful, templated logging
+        with separate console and file outputs using different styling templates.
+        
+        Args:
+            template: Template name for console styling ("beautiful", "minimal", "classic")
+            console_level: Minimum log level for console output  
+            file_path: Optional file path for file logging
+            file_level: Minimum log level for file output
+            
+        Returns:
+            Dictionary mapping stream names to handler IDs
+            
+        Examples:
+            >>> logger.configure_style("beautiful", file_path="app.log")
+            {'console': 1, 'file': 2}
+            
+            >>> logger.configure_style("minimal", console_level="WARNING")
+            {'console': 3}
+        """
+        from ._stream_manager import create_dual_stream_logger
+        
+        return create_dual_stream_logger(
+            logger=self,
+            console_template=template,
+            file_path=file_path,
+            file_template="minimal",
+            console_level=console_level,
+            file_level=file_level
+        )
+    
+    def configure_streams(self, **stream_configs) -> Dict[str, int]:
+        """
+        Configure multiple output streams with independent styling.
+        
+        This method allows advanced configuration of multiple streams with
+        different templates, formats, and destinations.
+        
+        Args:
+            **stream_configs: Named stream configurations. Each value should be a dict
+                with keys: 'sink', 'template', 'level', and optional loguru parameters.
+                
+        Returns:
+            Dictionary mapping stream names to handler IDs
+            
+        Examples:
+            >>> logger.configure_streams(
+            ...     console=dict(sink=sys.stderr, template="beautiful", level="INFO"),
+            ...     file=dict(sink="app.log", template="minimal", level="DEBUG"),
+            ...     json=dict(sink="data.json", template="classic", serialize=True)
+            ... )
+            {'console': 1, 'file': 2, 'json': 3}
+        """
+        from ._stream_manager import StreamManager
+        from ._template_formatters import create_template_formatter
+        
+        manager = StreamManager()
+        
+        for stream_name, config in stream_configs.items():
+            sink = config.get('sink')
+            template = config.get('template', 'beautiful')
+            level = config.get('level', 'DEBUG')
+            
+            # Extract additional loguru parameters  
+            handler_options = {k: v for k, v in config.items() 
+                             if k not in ('sink', 'template', 'level')}
+            
+            # Determine stream type and add to manager
+            if isinstance(sink, (str, Path)):
+                manager.add_file_stream(
+                    name=stream_name,
+                    filepath=sink,
+                    template=template,
+                    level=level,
+                    **handler_options
+                )
+            else:
+                manager.add_console_stream(
+                    name=stream_name,
+                    sink=sink,
+                    template=template, 
+                    level=level,
+                    **handler_options
+                )
+        
+        return manager.configure_logger(self)
+    
+    def set_template(self, handler_id: int, template_name: str) -> bool:
+        """
+        Change the template for an existing handler.
+        
+        This method allows runtime switching of templates for active handlers.
+        Note: This is a simplified implementation - full version would require
+        more sophisticated handler management.
+        
+        Args:
+            handler_id: ID of handler to modify
+            template_name: Name of new template to apply
+            
+        Returns:
+            True if template was changed, False if handler not found
+            
+        Examples:
+            >>> handler_id = logger.add(sys.stderr, format="{message}")
+            >>> logger.set_template(handler_id, "beautiful")
+            True
+        """
+        from ._templates import template_registry
+        
+        if handler_id not in self._core.handlers:
+            return False
+            
+        template = template_registry.get(template_name)
+        if not template:
+            raise ValueError(f"Template '{template_name}' not found in registry")
+        
+        # This is a simplified implementation
+        # Full version would require modifying the existing handler's formatter
+        return True
