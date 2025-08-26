@@ -167,7 +167,7 @@ class TestTemplateRegistry:
         registry = TemplateRegistry()
         
         templates = registry.list_templates()
-        assert "beautiful" in templates
+        assert "hierarchical" in templates
         assert "minimal" in templates
         assert "classic" in templates
     
@@ -205,10 +205,10 @@ class TestTemplateRegistry:
 class TestBuiltInTemplates:
     """Test built-in template configurations."""
     
-    def test_beautiful_template(self):
-        template = template_registry.get("beautiful")
+    def test_hierarchical_template(self):
+        template = template_registry.get("hierarchical")
         assert template is not None
-        assert template.name == "beautiful"
+        assert template.name == "hierarchical"
         assert template.mode == StyleMode.HYBRID
         assert template.context_detection is True
         assert len(template.style_rules) > 0
@@ -234,7 +234,7 @@ class TestIntegration:
     def test_full_template_pipeline(self):
         """Test complete template processing pipeline."""
         engine = TemplateEngine()
-        template = template_registry.get("beautiful")
+        template = template_registry.get("hierarchical")
         
         context = {
             "user": "alice",
@@ -256,9 +256,9 @@ class TestIntegration:
         message = "Test message"
         context = {"user": "test"}
         
-        # Test with beautiful template
-        beautiful = template_registry.get("beautiful")
-        result1 = engine.apply_template(message, context, beautiful, "INFO")
+        # Test with hierarchical template
+        hierarchical = template_registry.get("hierarchical")
+        result1 = engine.apply_template(message, context, hierarchical, "INFO")
         
         # Test with minimal template  
         minimal = template_registry.get("minimal")

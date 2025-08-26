@@ -306,24 +306,24 @@ class TemplateEngine:
 
 # Built-in template definitions
 BUILT_IN_TEMPLATES = {
-    "beautiful": TemplateConfig(
-        name="beautiful",
-        description="Elegant hierarchical styling with rich colors and Unicode symbols",
+    "hierarchical": TemplateConfig(
+        name="hierarchical",
+        description="Hierarchical styling with rich colors and Unicode box-drawing characters",
         level_styles={
-            "DEBUG": "dim cyan",
-            "INFO": "bold blue", 
-            "SUCCESS": "bold green",
-            "WARNING": "bold yellow",
-            "ERROR": "bold red",
-            "CRITICAL": "bold white on red"
+            "DEBUG": "cyan",
+            "INFO": "blue", 
+            "SUCCESS": "green",
+            "WARNING": "yellow",
+            "ERROR": "red",
+            "CRITICAL": "red"
         },
         context_styles={
-            "user": "bold cyan",
-            "error": "bold red",
+            "user": "cyan",
+            "error": "red",
             "ip": "magenta",
-            "url": "blue underline",
+            "url": "blue",
             "email": "cyan",
-            "filepath": "dim white"
+            "filepath": "white"
         },
         tree_chars={
             "branch": "├── ",
@@ -333,9 +333,9 @@ BUILT_IN_TEMPLATES = {
         },
         style_rules=[
             StyleRule(r'\b\d+\.\d+\.\d+\.\d+\b', 'magenta', 10, ContextType.IP),
-            StyleRule(r'https?://[^\s]+', 'blue underline', 10, ContextType.URL),
+            StyleRule(r'https?://[^\s]+', 'blue', 10, ContextType.URL),
             StyleRule(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', 'cyan', 10, ContextType.EMAIL),
-            StyleRule(r'/[^\s]*', 'dim white', 5, ContextType.FILEPATH),
+            StyleRule(r'/[^\s]*', 'white', 5, ContextType.FILEPATH),
         ],
         mode=StyleMode.HYBRID,
         preserve_markup=True,

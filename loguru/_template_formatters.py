@@ -8,6 +8,7 @@ while preserving full backward compatibility with existing formatters.
 from typing import Dict, Any, Optional, Union, Callable
 from ._templates import TemplateEngine, TemplateConfig, template_registry, StyleMode
 from ._colorizer import Colorizer
+from ._hierarchical_formatter import HierarchicalTemplateFormatter
 
 
 class TemplateFormatter:
@@ -46,8 +47,8 @@ class TemplateFormatter:
             if not self.template:
                 raise ValueError(f"Template '{template_name}' not found in registry")
         else:
-            # Default to beautiful template
-            self.template = template_registry.get("beautiful")
+            # Default to hierarchical template
+            self.template = template_registry.get("hierarchical")
         
         # Prepare native colorizer for fallback
         self._colorizer = None
@@ -109,6 +110,33 @@ class TemplateFormatter:
             # Use standard loguru formatting
             return self._format_native(record)
         
+        # Use hierarchical formatter for hierarchical template
+        if self.template.name == "hierarchical":
+            # Check cache for hierarchical formatting
+            message = record.get("message", "")
+            level = record.get("level")
+            if hasattr(level, 'name'):
+                level_name = level.name
+            elif isinstance(level, dict) and 'name' in level:
+                level_name = level['name']
+            else:
+                level_name = "INFO"
+            extra = record.get("extra", {})
+            
+            cache_key = self._make_cache_key(message, level_name, extra)
+            if cache_key == self._format_cache_key and self._cached_result:
+                return self._cached_result
+            
+            hierarchical_formatter = HierarchicalTemplateFormatter(
+                self.format_string, self.template
+            )
+            result = hierarchical_formatter.format_map(record)
+            
+            # Cache the result
+            self._format_cache_key = cache_key
+            self._cached_result = result
+            return result
+        
         # Create cache key for performance optimization
         message = record.get("message", "")
         level = record.get("level")
@@ -150,11 +178,23 @@ class TemplateFormatter:
         return self._format_native(template_record)
     
     def _format_native(self, record: Dict[str, Any]) -> str:
-        """Apply native loguru formatting to record."""
+        """Apply native loguru formatting with colorization."""
         try:
-            # Use simple string formatting for basic cases
+            # Format the string first
             formatted = self.format_string.format_map(record)
+            
+            # In manual mode, preserve markup literally without colorization
+            if hasattr(self, 'template') and self.template.mode == StyleMode.MANUAL:
+                return formatted
+            
+            # If the message contains loguru markup, colorize it
+            if '<' in formatted and '>' in formatted:
+                from loguru._colorizer import Colorizer
+                colorized = Colorizer.ansify(formatted)
+                return colorized
+            
             return formatted
+            
         except (KeyError, ValueError) as e:
             # Fallback to safe formatting
             safe_record = {
@@ -164,7 +204,12 @@ class TemplateFormatter:
                 "extra": record.get("extra", {})
             }
             try:
-                return self.format_string.format_map(safe_record)
+                formatted = self.format_string.format_map(safe_record)
+                # Apply colorization if markup is present
+                if '<' in formatted and '>' in formatted:
+                    from loguru._colorizer import Colorizer
+                    return Colorizer.ansify(formatted)
+                return formatted
             except:
                 return f"{safe_record['time']} | {safe_record['level']} | {safe_record['message']}"
 
@@ -198,7 +243,7 @@ class StreamTemplateFormatter:
         
         # Initialize appropriate formatter based on stream type
         if stream_type == "console":
-            template = self._resolve_template(console_template or "beautiful")
+            template = self._resolve_template(console_template or "hierarchical")
         elif stream_type == "file":
             template = self._resolve_template(file_template or "minimal")
         else:
@@ -239,7 +284,7 @@ class DynamicTemplateFormatter:
     def __init__(
         self,
         format_string: str,
-        default_template: str = "beautiful"
+        default_template: str = "hierarchical"
     ):
         """
         Initialize dynamic formatter.
@@ -390,5 +435,5 @@ def create_template_formatter(
     else:
         return TemplateFormatter(
             format_string=format_string,
-            template_name="beautiful"
+            template_name="hierarchical"
         )

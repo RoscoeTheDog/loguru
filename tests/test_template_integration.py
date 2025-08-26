@@ -36,7 +36,7 @@ class TestTemplateFormatter:
         """Test basic template application."""
         formatter = TemplateFormatter(
             format_string="{level} | {message}",
-            template_name="beautiful"
+            template_name="hierarchical"
         )
         
         record = {
@@ -53,7 +53,7 @@ class TestTemplateFormatter:
         """Test formatter with templates disabled."""
         formatter = TemplateFormatter(
             format_string="{level} | {message}",
-            template_name="beautiful",
+            template_name="hierarchical",
             enable_templates=False
         )
         
@@ -93,7 +93,7 @@ class TestTemplateFormatter:
         """Test format string stripping."""
         formatter = TemplateFormatter(
             format_string="<green>{time}</green> | {message}",
-            template_name="beautiful"
+            template_name="hierarchical"
         )
         
         stripped = formatter.strip()
@@ -105,10 +105,10 @@ class TestStreamTemplateFormatter:
     """Test stream-specific template formatting."""
     
     def test_console_stream_formatter(self):
-        """Test console stream with beautiful template."""
+        """Test console stream with hierarchical template."""
         formatter = StreamTemplateFormatter(
             format_string="{level} | {message}",
-            console_template="beautiful",
+            console_template="hierarchical",
             stream_type="console"
         )
         
@@ -148,7 +148,7 @@ class TestDynamicTemplateFormatter:
         """Test using default template."""
         formatter = DynamicTemplateFormatter(
             format_string="{level} | {message}",
-            default_template="beautiful"
+            default_template="hierarchical"
         )
         
         record = {
@@ -165,7 +165,7 @@ class TestDynamicTemplateFormatter:
         """Test per-message template override."""
         formatter = DynamicTemplateFormatter(
             format_string="{level} | {message}",
-            default_template="beautiful"
+            default_template="hierarchical"
         )
         
         record = {
@@ -182,7 +182,7 @@ class TestDynamicTemplateFormatter:
         """Test runtime template switching."""
         formatter = DynamicTemplateFormatter(
             format_string="{message}",
-            default_template="beautiful"
+            default_template="hierarchical"
         )
         
         formatter.set_default_template("minimal")
@@ -192,7 +192,7 @@ class TestDynamicTemplateFormatter:
         """Test error handling for invalid template names."""
         formatter = DynamicTemplateFormatter(
             format_string="{message}",
-            default_template="beautiful"
+            default_template="hierarchical"
         )
         
         with pytest.raises(ValueError, match="not found in registry"):
@@ -226,14 +226,14 @@ class TestStreamManager:
         manager = StreamManager()
         manager.add_console_stream(
             name="test_console",
-            template="beautiful",
+            template="hierarchical",
             level="INFO"
         )
         
         assert "test_console" in manager.streams
         stream_config = manager.streams["test_console"]
         assert stream_config.stream_type == "console"
-        assert stream_config.template == "beautiful"
+        assert stream_config.template == "hierarchical"
         assert stream_config.level == "INFO"
     
     def test_add_file_stream(self):
@@ -285,14 +285,14 @@ class TestStreamManager:
     def test_list_streams(self):
         """Test stream listing functionality."""
         manager = StreamManager()
-        manager.add_console_stream("console", template="beautiful")
+        manager.add_console_stream("console", template="hierarchical")
         manager.add_file_stream("file", Path("test.log"), template="minimal")
         
         streams = manager.list_streams()
         assert len(streams) == 2
         assert "console" in streams
         assert "file" in streams
-        assert "beautiful" in streams["console"]
+        assert "hierarchical" in streams["console"]
         assert "minimal" in streams["file"]
 
 
@@ -319,7 +319,7 @@ class TestStreamConfig:
     
     def test_get_formatter(self):
         """Test formatter creation."""
-        config = StreamConfig(sys.stderr, "{message}", template="beautiful")
+        config = StreamConfig(sys.stderr, "{message}", template="hierarchical")
         formatter = config.get_formatter()
         assert isinstance(formatter, StreamTemplateFormatter)
 
@@ -331,7 +331,7 @@ class TestFactoryFunction:
         """Test creating basic template formatter."""
         formatter = create_template_formatter(
             format_string="{message}",
-            template="beautiful"
+            template="hierarchical"
         )
         assert isinstance(formatter, TemplateFormatter)
     
@@ -353,7 +353,7 @@ class TestFactoryFunction:
     
     def test_create_with_template_config(self):
         """Test creating formatter with template config object."""
-        template_config = template_registry.get("beautiful")
+        template_config = template_registry.get("hierarchical")
         formatter = create_template_formatter(
             format_string="{message}",
             template=template_config
@@ -375,7 +375,7 @@ class TestLoggerIntegration:
     
     def test_configure_style_console_only(self):
         """Test configure_style with console only."""
-        handler_ids = logger.configure_style("beautiful", console_level="INFO")
+        handler_ids = logger.configure_style("hierarchical", console_level="INFO")
         
         assert "console" in handler_ids
         assert isinstance(handler_ids["console"], int)
@@ -387,7 +387,7 @@ class TestLoggerIntegration:
         
         try:
             handler_ids = logger.configure_style(
-                "beautiful",
+                "hierarchical",
                 file_path=tmp_path,
                 console_level="INFO",
                 file_level="DEBUG"
@@ -412,7 +412,7 @@ class TestLoggerIntegration:
         
         try:
             handler_ids = logger.configure_streams(
-                console=dict(sink=sys.stderr, template="beautiful", level="INFO"),
+                console=dict(sink=sys.stderr, template="hierarchical", level="INFO"),
                 file=dict(sink=tmp_path, template="minimal", level="DEBUG"),
                 json=dict(sink=tmp_path + ".json", template="classic", serialize=True)
             )
@@ -436,11 +436,11 @@ class TestLoggerIntegration:
         handler_id = logger.add(sys.stderr, format="{message}")
         
         # This is a simplified test - full implementation would actually change the template
-        result = logger.set_template(handler_id, "beautiful")
+        result = logger.set_template(handler_id, "hierarchical")
         assert result is True
         
         # Test with invalid handler ID
-        result = logger.set_template(99999, "beautiful")
+        result = logger.set_template(99999, "hierarchical")
         assert result is False
         
         # Test with invalid template name
@@ -467,7 +467,7 @@ class TestEndToEndIntegration:
             # Configure dual streams
             handler_ids = create_dual_stream_logger(
                 logger=logger,
-                console_template="beautiful",
+                console_template="hierarchical",
                 file_path=tmp_path,
                 file_template="minimal"
             )
@@ -498,7 +498,7 @@ class TestEndToEndIntegration:
         logger.add(sys.stderr, format="{message}")
         
         # Log with different contexts to test template application
-        logger.bind(template="beautiful").info("Beautiful template message")
+        logger.bind(template="hierarchical").info("Beautiful template message")
         logger.bind(template="minimal").info("Minimal template message")
     
     def test_backward_compatibility(self):
@@ -518,7 +518,7 @@ class TestExceptionHookIntegration:
 
     def test_global_exception_hook_basic(self):
         """Test basic exception hook functionality."""
-        hook = GlobalExceptionHook(logger, "beautiful")
+        hook = GlobalExceptionHook(logger, "hierarchical")
         hook.install()
         
         try:
@@ -530,7 +530,7 @@ class TestExceptionHookIntegration:
 
     def test_exception_hook_formatting(self):
         """Test exception formatting with template."""
-        hook = GlobalExceptionHook(logger, "beautiful")
+        hook = GlobalExceptionHook(logger, "hierarchical")
         
         # Mock exception handling
         exc_type = ValueError
@@ -555,7 +555,7 @@ class TestExceptionHookIntegration:
 
     def test_exception_context_manager(self):
         """Test exception context manager."""
-        with ExceptionContext(logger, "beautiful") as ctx:
+        with ExceptionContext(logger, "hierarchical") as ctx:
             assert ctx._installed
         assert not ctx._installed
 
@@ -564,7 +564,7 @@ class TestExceptionHookIntegration:
         def test_filter(exc_type, exc_value, exc_tb):
             return exc_type != ValueError  # Don't handle ValueError
             
-        hook = SmartExceptionHook(logger, "beautiful", filter_func=test_filter)
+        hook = SmartExceptionHook(logger, "hierarchical", filter_func=test_filter)
         hook.install()
         
         try:
@@ -602,7 +602,7 @@ class TestTracingSystem:
         logger.add(logs.append, format="{message}")
         
         try:
-            tracer = FunctionTracer(logger, "beautiful")
+            tracer = FunctionTracer(logger, "hierarchical")
             
             @tracer.trace
             def test_function(x, y):
@@ -618,7 +618,7 @@ class TestTracingSystem:
 
     def test_tracing_rules(self):
         """Test pattern-based tracing rules."""
-        tracer = FunctionTracer(logger, "beautiful")
+        tracer = FunctionTracer(logger, "hierarchical")
         
         # Add rule for test functions
         tracer.add_rule(
@@ -643,7 +643,7 @@ class TestTracingSystem:
 
     def test_performance_tracer(self):
         """Test performance monitoring tracer."""
-        tracer = PerformanceTracer(logger, "beautiful")
+        tracer = PerformanceTracer(logger, "hierarchical")
         
         @tracer.trace_performance(threshold_ms=100)
         def slow_function():
@@ -665,7 +665,7 @@ class TestTracingSystem:
         logger.add(logs.append, format="{level} | {message}")
         
         try:
-            tracer = FunctionTracer(logger, "beautiful")
+            tracer = FunctionTracer(logger, "hierarchical")
             
             @tracer.trace
             def failing_function():
@@ -789,7 +789,7 @@ class TestPerformanceOptimization:
         """Test performance optimization through caching."""
         formatter = TemplateFormatter(
             format_string="{time} | {level} | {message}",
-            template_name="beautiful"
+            template_name="hierarchical"
         )
         
         record = {
@@ -816,7 +816,7 @@ class TestPerformanceOptimization:
         """Test performance with context pattern matching."""
         formatter = TemplateFormatter(
             format_string="{message}",
-            template_name="beautiful"
+            template_name="hierarchical"
         )
         
         # Message with multiple patterns
@@ -839,7 +839,7 @@ class TestPerformanceOptimization:
         from loguru._templates import TemplateEngine
         
         engine = TemplateEngine()
-        template = template_registry.get("beautiful")
+        template = template_registry.get("hierarchical")
         
         # First call should compile patterns
         message1 = "Test message with user@example.com"

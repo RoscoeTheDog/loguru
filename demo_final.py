@@ -88,40 +88,118 @@ def demo_context_detection():
 
 
 def demo_templates():
-    """Template system demonstration."""
+    """Template system demonstration with performance benchmarks."""
     print("\n" + "="*50)
     print("TEMPLATE SYSTEM")
     print("="*50)
     
-    message = "User alice@example.com payment $99.99 from 192.168.1.1"
+    test_cases = [
+        {
+            "message": "User alice@example.com logged in successfully",
+            "extra": {
+                "user_id": "alice123",
+                "session_id": "sess_abc123", 
+                "ip": "192.168.1.100",
+                "duration": 0.045,
+                "status_code": 200
+            }
+        },
+        {
+            "message": "Payment processed for $99.99",
+            "extra": {
+                "user_id": "john_doe",
+                "amount": 99.99,
+                "payment_method": "credit_card",
+                "transaction_id": "txn_xyz789"
+            }
+        },
+        {
+            "message": "Database connection failed",
+            "extra": {
+                "error_type": "ConnectionTimeout",
+                "database": "postgres_prod",
+                "retry_count": 3,
+                "execution_time_seconds": 5.0
+            }
+        }
+    ]
     
-    for template_name in ["beautiful", "minimal", "classic"]:
-        print(f"\n>> {template_name.upper()} Template:")
+    template_display_names = {
+        "hierarchical": "HIERARCHICAL",
+        "minimal": "MINIMAL", 
+        "classic": "CLASSIC"
+    }
+    
+    # First, establish baseline performance with native loguru
+    print(f"\n>> NATIVE LOGURU (Baseline):")
+    print("-" * 50)
+    
+    logger.remove()
+    logger.add(lambda x: None, format="{time:HH:mm:ss} | {level} | {message}")
+    
+    import time
+    start = time.perf_counter()
+    iterations = 100
+    for _ in range(iterations):
+        for test_case in test_cases:
+            logger.info(test_case["message"], **test_case["extra"])
+    native_time = time.perf_counter() - start
+    
+    print(f"Performance: {native_time*1000:.2f}ms for {iterations*len(test_cases)} messages")
+    print(f"Per message: {(native_time*1000)/(iterations*len(test_cases)):.3f}ms")
+    
+    # Now test each template
+    for template_name in ["hierarchical", "minimal", "classic"]:
+        display_name = template_display_names[template_name]
+        print(f"\n>> {display_name} Template:")
+        print("-" * 50)
         
+        # Performance benchmark first
         logger.remove()
         formatter = create_template_formatter(
             format_string="{time:HH:mm:ss} | {level} | {message}",
             template=template_name
         )
+        logger.add(lambda x: None, format=formatter.format_map)
         
-        # Show the raw formatter output
-        test_record = {
-            "time": "12:34:56",
-            "level": {"name": "INFO"},
-            "message": message,
-            "extra": {}
-        }
+        start = time.perf_counter()
+        for _ in range(iterations):
+            for test_case in test_cases:
+                logger.info(test_case["message"], **test_case["extra"])
+        template_time = time.perf_counter() - start
         
-        try:
-            formatted = formatter.format_map(test_record)
-            print(f"Formatted: {formatted}")
-        except Exception as e:
-            print(f"Format error: {e}")
-            print(f"Using fallback formatting")
+        overhead = ((template_time / native_time) - 1) * 100
+        print(f"Performance: {template_time*1000:.2f}ms for {iterations*len(test_cases)} messages")
+        print(f"Per message: {(template_time*1000)/(iterations*len(test_cases)):.3f}ms")
+        print(f"Overhead: {overhead:.1f}% vs native loguru")
         
-        # Use with logger - use the formatter directly instead of the formatted string
-        logger.add(sys.stderr, format=formatter.format_map, colorize=True)
-        logger.info(message)
+        # Determine performance status
+        if overhead < 25:
+            status = "Excellent"
+        elif overhead < 50:
+            status = "Good"
+        elif overhead < 100:
+            status = "Acceptable"
+        else:
+            status = "High"
+        print(f"Status: {status}")
+        
+        # Now show visual output
+        print(f"\nVisual Output:")
+        logger.remove()
+        logger.add(sys.stderr, format=formatter.format_map, colorize=True, level="DEBUG")
+        
+        for i, test_case in enumerate(test_cases, 1):
+            print(f"\nTest Case {i}:")
+            if template_name == "hierarchical":
+                logger.info(test_case["message"], **test_case["extra"])
+            elif template_name == "minimal": 
+                logger.warning(test_case["message"], **test_case["extra"])
+            else:  # classic
+                logger.error(test_case["message"], **test_case["extra"])
+        
+        # Add spacing between template sections
+        print()
 
 
 def api_call_demo(endpoint: str) -> dict:
@@ -146,7 +224,7 @@ def demo_function_tracing():
         level="DEBUG"
     )
     
-    tracer = FunctionTracer(logger, "beautiful")
+    tracer = FunctionTracer(logger, "hierarchical")
     traced_api = tracer.trace(api_call_demo)
     
     print("Function tracing in action:")
@@ -177,7 +255,7 @@ def demo_exception_hooks():
         colorize=True
     )
     
-    hook = install_exception_hook(logger, "beautiful")
+    hook = install_exception_hook(logger, "hierarchical")
     
     try:
         print("Testing exception capture:")
@@ -211,7 +289,7 @@ def demo_performance():
     
     # Template performance
     logger.remove()
-    formatter = create_template_formatter("{message}", "beautiful")
+    formatter = create_template_formatter("{message}", "hierarchical")
     logger.add(lambda x: None, format=formatter.format_map)
     
     start = time.perf_counter()
@@ -235,7 +313,7 @@ ENHANCED LOGURU FINAL DEMO
 ==========================
 
 Showcasing all major features:
-- Beautiful template-based styling
+- Hierarchical template-based styling  
 - Smart context auto-detection  
 - Function tracing with timing
 - Global exception hooks
@@ -267,7 +345,7 @@ What you just saw:
    - Performance optimizations
 
 2. Production Benefits:
-   - Zero-config beautiful output
+   - Zero-config hierarchical output
    - Automatic context detection and styling
    - Advanced debugging capabilities
    - Minimal performance overhead
