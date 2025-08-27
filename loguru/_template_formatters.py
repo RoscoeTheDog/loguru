@@ -124,6 +124,8 @@ class TemplateFormatter:
             extra = record.get("extra", {})
             
             cache_key = self._make_cache_key(message, level_name, extra)
+            # Add version info to bust cache after removing prepended newline
+            cache_key = cache_key + ("format_function_v1",)
             if cache_key == self._format_cache_key and self._cached_result:
                 return self._cached_result
             
@@ -437,3 +439,94 @@ def create_template_formatter(
             format_string=format_string,
             template_name="hierarchical"
         )
+
+
+def create_hierarchical_format_function(
+    format_string: str = "{time:HH:mm:ss} | {level} | {name} | {message}",
+    template: Optional[Union[str, TemplateConfig]] = None
+):
+    """
+    Create a format function for hierarchical logging with proper line ending control.
+    
+    This follows loguru's documented pattern for custom formatters by returning a function
+    that handles explicit line endings, ensuring proper spacing between hierarchical log blocks.
+    
+    Args:
+        format_string: Base loguru format string (used for fallback)
+        template: Template name or configuration
+        
+    Returns:
+        Format function suitable for loguru's format parameter
+        
+    Example:
+        logger.add(sys.stderr, format=create_hierarchical_format_function(), colorize=True)
+    """
+    from ._hierarchical_formatter import HierarchicalFormatter
+    from ._templates import template_registry
+    
+    # Get the hierarchical template
+    if isinstance(template, str):
+        template_config = template_registry.get(template)
+    elif isinstance(template, TemplateConfig):
+        template_config = template
+    else:
+        template_config = template_registry.get("hierarchical")
+    
+    # Create the hierarchical formatter
+    hierarchical_formatter = HierarchicalFormatter(template_config)
+    
+    def hierarchical_format_function(record):
+        """
+        Format function that provides hierarchical formatting with explicit line ending control.
+        
+        This function takes complete responsibility for formatting and line endings,
+        following the maintainer's guidance for custom formatters.
+        """
+        # Extract record components
+        message = record.get("message", "")
+        level = record.get("level")
+        
+        # Handle both real loguru level objects and test dictionaries
+        if hasattr(level, 'name'):
+            level_name = level.name
+        elif isinstance(level, dict) and 'name' in level:
+            level_name = level['name']
+        else:
+            level_name = str(level) if level else "INFO"
+            
+        # Extract timestamp
+        time = record.get("time")
+        if hasattr(time, 'strftime'):
+            timestamp = time.strftime("%H:%M:%S")
+        elif isinstance(time, str):
+            timestamp = time
+        else:
+            timestamp = "00:00:00"
+            
+        # Extract logger name
+        name = record.get("name", "unknown")
+        
+        # Extract extra context
+        extra = record.get("extra", {})
+        
+        # Extract exception information if present
+        exception_info = record.get("exception")
+        
+        # Use hierarchical formatter to generate the formatted output
+        formatted_output = hierarchical_formatter.format_record(
+            level=level_name,
+            message=message,
+            logger_name=name,
+            timestamp=timestamp,
+            extra=extra,
+            exception_info=exception_info
+        )
+        
+        # CRITICAL: Add explicit line ending as required by loguru's custom formatter pattern
+        # This ensures proper separation between log entries
+        if not formatted_output.endswith('\n'):
+            formatted_output += '\n'
+            
+        return formatted_output
+    
+    return hierarchical_format_function

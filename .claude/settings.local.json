@@ -13,7 +13,10 @@
       "Bash(python -m pytest tests/test_template_integration.py::TestExceptionHookIntegration::test_global_exception_hook_basic -v)",
       "Bash(python -m pytest tests/test_template_integration.py::TestTracingSystem::test_function_tracer_basic -v)",
       "Bash(python -m pytest tests/test_template_integration.py --tb=short)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []

@@ -61,6 +61,7 @@ pip install loguru
 - [Personalizable defaults through environment variables](#personalizable-defaults-through-environment-variables)
 - [Convenient parser](#convenient-parser)
 - [Exhaustive notifier](#exhaustive-notifier)
+- [Comprehensive log analysis toolkit](#comprehensive-log-analysis-toolkit) 🆕
 - <s>[10x faster than built-in logging](#10x-faster-than-built-in-logging)</s>
 
 ## Take the tour
@@ -616,6 +617,141 @@ export LOGURU_FORMAT="{time} | <lvl>{message}</lvl>"
 setx LOGURU_DEBUG_COLOR "<green>"
 ```
 
+### Comprehensive log analysis toolkit
+
+Loguru includes a powerful log analysis toolkit that works with both JSON-serialized logs and standard text logs, providing enterprise-grade analysis capabilities for debugging, monitoring, and performance optimization.
+
+#### Quick analysis with built-in functions
+
+Analyze your log files instantly using Loguru's built-in analysis functions:
+
+```python
+from loguru import logger, analyze_log_file, quick_stats, check_health
+
+# Quick overview of any log file
+stats = quick_stats("application.log")
+print(stats)  # "Total: 1,234 | Error Rate: 2.3% | Time Range: ... | Top Module: auth"
+
+# Comprehensive health check
+health = check_health("application.log")
+print(f"Health Score: {health['health_score']}/100 ({health['status']})")
+
+if health['issues']:
+    print("Issues found:")
+    for issue in health['issues']:
+        print(f"- {issue}")
+
+# Detailed analysis
+results = analyze_log_file("application.log")
+print(f"Total entries: {results['total_entries']:,}")
+print(f"Error rate: {results['error_rate']:.1f}%")
+print(f"Performance: {results['performance']['avg_duration']:.3f}s avg")
+```
+
+#### Specialized analysis functions
+
+Target specific aspects of your logs with specialized analysis:
+
+```python
+from loguru import get_error_summary, get_performance_summary, find_log_patterns
+
+# Error-focused analysis
+errors = get_error_summary("application.log")
+print(f"Errors: {errors['error_count']}, Rate: {errors['error_rate']:.1f}%")
+print("Top error patterns:", errors['top_error_patterns'])
+
+# Performance analysis 
+perf = get_performance_summary("application.log")
+print(f"Avg duration: {perf['avg_duration']:.3f}s")
+print(f"Slow operations: {perf['slow_operations']}")
+
+# Pattern matching with regex
+database_errors = find_log_patterns("application.log", r"database.*error")
+for error in database_errors[-5:]:  # Last 5 database errors
+    print(f"{error['timestamp']} - {error['message']}")
+```
+
+#### Command-line analysis tool
+
+Analyze logs directly from the command line with the included CLI tool:
+
+```bash
+# Basic analysis
+python analyze_logs.py application.log
+
+# Filter by error level
+python analyze_logs.py --level ERROR application.log
+
+# Search for patterns
+python analyze_logs.py --pattern "database.*failed" application.log
+
+# Generate comprehensive reports
+python analyze_logs.py --all-reports application.log
+
+# Save analysis to file
+python analyze_logs.py --summary -o report.txt application.log
+
+# Analyze multiple files together
+python analyze_logs.py app.log background.log api.log
+```
+
+#### Multi-format support
+
+The analysis toolkit works seamlessly with different log formats:
+
+```python
+# JSON-serialized logs (recommended for structured analysis)
+logger.add("structured.log", serialize=True)
+results = analyze_log_file("structured.log")  # Rich metadata available
+
+# Standard text logs (human-readable format)
+logger.add("readable.log", format="{time} | {level} | {message}")
+results = analyze_log_file("readable.log")  # Basic analysis available
+
+# Mixed analysis across formats
+from loguru import analyze_log_files
+combined = analyze_log_files(["structured.log", "readable.log"])
+```
+
+#### Report generation
+
+Generate detailed reports for stakeholders and documentation:
+
+```python
+from loguru import generate_report
+
+# Different report types
+summary = generate_report("app.log", "summary")
+time_analysis = generate_report("app.log", "time") 
+error_analysis = generate_report("app.log", "error")
+context_analysis = generate_report("app.log", "context")
+
+# Save comprehensive report
+comprehensive = generate_report("app.log", "all", "full_analysis.txt")
+```
+
+#### Production monitoring integration
+
+Integrate log analysis with your monitoring systems:
+
+```python
+import schedule
+from loguru import check_health, get_error_summary
+
+def daily_log_health_check():
+    health = check_health("production.log")
+    errors = get_error_summary("production.log")
+    
+    if health['status'] == 'critical':
+        send_alert(f"Critical log issues: {health['issues']}")
+    elif errors['error_rate'] > 5.0:
+        send_warning(f"High error rate: {errors['error_rate']:.1f}%")
+
+schedule.every().day.at("09:00").do(daily_log_health_check)
+```
+
+The analysis toolkit supports both development debugging and production monitoring scenarios, with automatic pattern detection, performance analysis, and health scoring systems that help you understand what your logs are telling you.
+
 ### Convenient parser
 
 It is often useful to extract specific information from generated logs, this is why Loguru provides a [`parse()`](https://loguru.readthedocs.io/en/stable/api/logger.html#loguru._logger.Logger.parse) method which helps to deal with logs and regexes.
@@ -704,8 +840,93 @@ The template system is highly optimized with:
 - [Template System Guide](#beautiful-template-based-styling-system) 🆕
 - [Function Tracing Guide](#advanced-function-tracing-and-performance-monitoring) 🆕
 - [Exception Hook Guide](#global-exception-hook-integration) 🆕
+- [Log Analysis Toolkit Guide](#comprehensive-log-analysis-toolkit) 🆕
 - [Help & Guides](https://loguru.readthedocs.io/en/stable/resources.html)
 - [Type hints](https://loguru.readthedocs.io/en/stable/api/type_hints.html)
 - [Contributing](https://loguru.readthedocs.io/en/stable/project/contributing.html)
 - [License](https://loguru.readthedocs.io/en/stable/project/license.html)
 - [Changelog](https://loguru.readthedocs.io/en/stable/project/changelog.html)
+
+## Log Analysis API Reference
+
+The following analysis functions are available directly from the loguru package:
+
+### Core Analysis Functions
+
+#### `analyze_log_file(file_path: str) -> Dict[str, Any]`
+Comprehensive analysis of a single log file, supporting both JSON and text formats.
+
+**Returns:**
+- `total_entries`: Total number of log entries
+- `level_counts`: Count of each log level  
+- `error_rate`: Percentage of ERROR/CRITICAL entries
+- `time_range`: Start time, end time, and duration
+- `top_modules`: Most active modules
+- `top_functions`: Most frequently logged functions
+- `performance`: Timing statistics if available
+- `hourly_distribution`: Entry counts by hour
+- `daily_distribution`: Entry counts by day
+
+#### `analyze_log_files(file_paths: List[str]) -> Dict[str, Any]`
+Combined analysis across multiple log files with aggregated metrics.
+
+#### `quick_stats(file_path: str) -> str`
+Returns essential statistics as a formatted one-line string.
+
+#### `check_health(file_path: str) -> Dict[str, Any]`
+Performs health assessment with scoring and issue identification.
+
+**Returns:**
+- `health_score`: Score from 0-100
+- `status`: 'healthy', 'warning', or 'critical'  
+- `issues`: List of identified problems
+- `error_rate`: Current error percentage
+- `avg_performance`: Average execution time
+
+### Specialized Analysis Functions
+
+#### `get_error_summary(file_path: str) -> Dict[str, Any]`
+Error-focused analysis including patterns and exception types.
+
+#### `get_performance_summary(file_path: str) -> Dict[str, Any]`  
+Performance metrics including timing statistics and thresholds.
+
+#### `find_log_patterns(file_path: str, pattern: str) -> List[Dict[str, Any]]`
+Search for entries matching a regex pattern.
+
+#### `get_time_distribution(file_path: str, granularity: str = 'hour') -> Dict[str, int]`
+Time-based distribution analysis ('hour', 'day', 'minute').
+
+#### `generate_report(file_path: str, report_type: str = 'summary', output_file: str = None) -> str`
+Generate formatted analysis reports.
+
+**Report Types:**
+- `'summary'`: Overview with key metrics
+- `'time'`: Time-based analysis
+- `'error'`: Error-focused analysis  
+- `'context'`: Context field analysis
+- `'all'`: Combined comprehensive report
+
+### Usage Examples
+
+```python
+from loguru import logger, analyze_log_file, check_health, quick_stats
+
+# Quick analysis
+print(quick_stats("app.log"))
+
+# Health monitoring
+health = check_health("app.log")
+if health['status'] != 'healthy':
+    print(f"Issues: {health['issues']}")
+
+# Detailed analysis  
+results = analyze_log_file("app.log")
+print(f"Entries: {results['total_entries']}")
+print(f"Error rate: {results['error_rate']:.1f}%")
+
+# Error investigation
+from loguru import get_error_summary, find_log_patterns
+errors = get_error_summary("app.log")
+db_errors = find_log_patterns("app.log", r"database.*error")
+```

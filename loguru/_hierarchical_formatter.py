@@ -60,7 +60,8 @@ class HierarchicalFormatter:
         message: str, 
         logger_name: str,
         timestamp: str,
-        extra: Dict[str, Any] = None
+        extra: Dict[str, Any] = None,
+        exception_info: tuple = None
     ) -> str:
         """
         Format a log record using hierarchical box-drawing style.
@@ -69,7 +70,16 @@ class HierarchicalFormatter:
         - Header line with timestamp, level symbol, and logger
         - Message line with proper indentation  
         - Context section with hierarchical key-value pairs
+        - Exception section with clickable file links (if exception_info provided)
         - Footer line for visual separation
+        
+        Args:
+            level: Log level name
+            message: Log message
+            logger_name: Name of the logger
+            timestamp: Formatted timestamp
+            extra: Additional context data
+            exception_info: Tuple of (exc_type, exc_value, exc_traceback) or None
         """
         extra = extra or {}
         
@@ -100,7 +110,7 @@ class HierarchicalFormatter:
         # Build the hierarchical output WITHOUT markup first
         lines = []
         
-        # Header line with box-drawing characters
+        # Header line with box-drawing characters - prepend with newline for separation
         header = f"┌─ {timestamp} │ {level_symbol} {level_display} │ {logger_display}"
         lines.append(header)
         
@@ -111,6 +121,11 @@ class HierarchicalFormatter:
         if extra:
             context_lines = self._format_context_section(extra)
             lines.extend(context_lines)
+        
+        # Exception section if available
+        if exception_info:
+            exception_lines = self._format_exception_section(exception_info)
+            lines.extend(exception_lines)
         
         # Footer line for visual separation
         footer_width = 50  # Fixed width to avoid color code counting issues
@@ -257,13 +272,120 @@ class HierarchicalFormatter:
             elif '@' in value and '.' in value:  # Email
                 return f"<cyan>{value}</cyan>"
             elif value.startswith(('http://', 'https://')):  # URL
-                return f"<blue underline>{value}</blue underline>"
+                return f"<blue>{value}</blue>"
             elif value.startswith('/') or '\\' in value:  # File path
-                return f"<dim white>{value}</dim white>"
+                return f"<dim>{value}</dim>"
             else:
                 return f"<white>{value}</white>"
         else:
             return f"<dim>{value}</dim>"
+    
+    def _format_exception_section(self, exception_info: tuple) -> List[str]:
+        """
+        Format exception information using hierarchical style with clickable file links.
+        
+        This maintains the same hierarchical formatting as the global exception hook
+        to ensure consistent appearance between caught and uncaught exceptions.
+        """
+        if not exception_info or len(exception_info) != 3:
+            return []
+            
+        exc_type, exc_value, exc_traceback = exception_info
+        lines = []
+        
+        # Exception details header
+        lines.append("├─ Exception Details:")
+        lines.append(f"│  ├─ Type: {exc_type.__name__}")
+        lines.append(f"│  ├─ Message: {str(exc_value)}")
+        
+        # Extract call stack information
+        call_stack = self._extract_call_stack(exc_traceback)
+        
+        # Call stack section with clickable file links
+        if call_stack:
+            lines.append("├─ Call Stack:")
+            for i, (filename, lineno, function, code) in enumerate(call_stack):
+                is_last = i == len(call_stack) - 1
+                prefix = "│  └─" if is_last else "│  ├─"
+                
+                # Use standard Python traceback format for IDE clickability
+                # Escape angle brackets in function names to prevent markup conflicts
+                safe_function = function.replace('<', '&lt;').replace('>', '&gt;')
+                file_link = f'File "{filename}", line {lineno}, in {safe_function}'
+                lines.append(f"{prefix} {file_link}")
+                
+                # Add code context if available
+                if code and code.strip():
+                    code_prefix = "   " if is_last else "│     "
+                    lines.append(f"{code_prefix}    {code.strip()}")
+        
+        # Local variables from the error location
+        local_vars = self._extract_local_variables(exc_traceback)
+        if local_vars:
+            lines.append("├─ Local Variables:")
+            var_items = list(local_vars.items())
+            for i, (name, value) in enumerate(var_items):
+                is_last = i == len(var_items) - 1
+                prefix = "│  └─" if is_last else "│  ├─"
+                lines.append(f"{prefix} {name}: {self._safe_repr(value)}")
+        
+        return lines
+    
+    def _extract_call_stack(self, exc_traceback) -> list:
+        """Extract call stack information maintaining file path format for IDE links."""
+        call_stack = []
+        tb = exc_traceback
+        
+        while tb is not None:
+            frame = tb.tb_frame
+            filename = frame.f_code.co_filename
+            lineno = tb.tb_lineno
+            function = frame.f_code.co_name
+            
+            # Get the source code line
+            import linecache
+            code = linecache.getline(filename, lineno)
+            
+            call_stack.append((filename, lineno, function, code))
+            tb = tb.tb_next
+            
+        return call_stack
+    
+    def _extract_local_variables(self, exc_traceback) -> dict:
+        """Extract local variables from the last frame (error location)."""
+        if not exc_traceback:
+            return {}
+            
+        # Get the last frame (where the error occurred)
+        tb = exc_traceback
+        while tb.tb_next is not None:
+            tb = tb.tb_next
+            
+        frame = tb.tb_frame
+        local_vars = {}
+        
+        # Extract simple local variables (avoid complex objects)
+        for name, value in frame.f_locals.items():
+            if not name.startswith('_') and isinstance(value, (str, int, float, bool, list, dict, tuple)):
+                try:
+                    # Limit size to prevent huge outputs
+                    str_repr = repr(value)
+                    if len(str_repr) <= 200:
+                        local_vars[name] = value
+                except Exception:
+                    pass
+                    
+        return local_vars
+    
+    def _safe_repr(self, value) -> str:
+        """Safely represent a value, truncating if too long."""
+        try:
+            repr_str = repr(value)
+            if len(repr_str) > 150:
+                return repr_str[:147] + "..."
+            return repr_str
+        except Exception:
+            return f"<unprintable {type(value).__name__} object>"
 
 
 class HierarchicalTemplateFormatter:
@@ -315,6 +437,9 @@ class HierarchicalTemplateFormatter:
         # Extract extra context
         extra = record.get("extra", {})
         
+        # Extract exception information if present
+        exception_info = record.get("exception")
+        
         # Use hierarchical formatter for hierarchical template
         if self.template.name == "hierarchical":
             # The hierarchical formatter already applies colorization
@@ -323,7 +448,8 @@ class HierarchicalTemplateFormatter:
                 message=message,
                 logger_name=name,
                 timestamp=timestamp,
-                extra=extra
+                extra=extra,
+                exception_info=exception_info
             )
         else:
             # Fall back to standard formatting for other templates

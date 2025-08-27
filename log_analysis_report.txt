@@ -1,0 +1,30 @@
+LOG ANALYSIS SUMMARY
+==================================================
+Total Entries: 5
+Time Range: 2025-08-26 08:18:33.443552 to 2025-08-26 08:18:33.444551
+Duration: 0:00:00.000999
+
+LEVEL DISTRIBUTION:
+------------------------------
+     DEBUG:      1 ( 20.0%)
+     ERROR:      1 ( 20.0%)
+      INFO:      1 ( 20.0%)
+   SUCCESS:      1 ( 20.0%)
+   WARNING:      1 ( 20.0%)
+
+TOP MODULES:
+--------------------
+  demo_final: 5
+
+TOP ERROR PATTERNS:
+-------------------------
+  database connection failed: 1
+
+PERFORMANCE METRICS:
+-------------------------
+  Entries with timing: 5
+  Average duration: 0.364s
+  Median duration: 0.364s
+  Std deviation: 0.000s
+  Min duration: 0.363s
+  Max duration: 0.364s

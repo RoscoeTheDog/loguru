@@ -66,7 +66,11 @@ class GlobalExceptionHook:
         
     def _handle_exception(self, exc_type: Type[BaseException], exc_value: BaseException, exc_traceback: Any) -> None:
         """
-        Handle unhandled exceptions in the main thread.
+        Handle unhandled exceptions with unified hierarchical formatting and clickable file links.
+        
+        This implementation eliminates duplicate traceback output by completely replacing
+        the standard Python traceback with a hierarchical format that maintains IDE
+        hyperlink compatibility through the standard 'File "path", line X' pattern.
         
         Args:
             exc_type: Exception type
@@ -79,22 +83,215 @@ class GlobalExceptionHook:
                 self.original_hook(exc_type, exc_value, exc_traceback)
             return
             
-        # Format the exception with context
+        # Format the exception using hierarchical style with embedded traceback
+        formatted_exception = self._format_hierarchical_exception(exc_type, exc_value, exc_traceback)
+        
+        # Output the formatted exception directly to stderr
+        print(formatted_exception, file=sys.stderr)
+        
+        # DO NOT call original hook - this prevents duplicate traceback output
+        # The hierarchical format contains all the information from the standard traceback
+    
+    def _format_hierarchical_exception(self, exc_type: Type[BaseException], exc_value: BaseException, exc_traceback: Any) -> str:
+        """
+        Format exception using hierarchical style with proper template integration.
+        
+        This uses the hierarchical formatter to maintain consistency with regular hierarchical logging.
+        """
+        # Use the hierarchical formatter if we have the hierarchical template
+        if self.template_name == "hierarchical" and self.template:
+            from ._hierarchical_formatter import HierarchicalFormatter
+            from datetime import datetime
+            
+            # Create hierarchical formatter instance
+            hierarchical_formatter = HierarchicalFormatter(self.template)
+            
+            # Format the exception using the same system as regular logs
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            calling_module = self._get_calling_module_name(exc_traceback)
+            message = f"Unhandled {exc_type.__name__}: {str(exc_value)}"
+            
+            # Sanitize module name to prevent markup conflicts
+            calling_module = calling_module.replace('<', '&lt;').replace('>', '&gt;')
+            
+            # Use the hierarchical formatter's exception formatting
+            formatted_output = hierarchical_formatter.format_record(
+                level="ERROR",
+                message=message,
+                logger_name=calling_module,
+                timestamp=timestamp,
+                extra={},  # No extra context for uncaught exceptions
+                exception_info=(exc_type, exc_value, exc_traceback)
+            )
+            
+            return formatted_output
+        
+        # Fallback to custom formatting for other templates
+        return self._format_custom_exception(exc_type, exc_value, exc_traceback)
+    
+    def _format_custom_exception(self, exc_type: Type[BaseException], exc_value: BaseException, exc_traceback: Any) -> str:
+        """
+        Fallback custom exception formatting for non-hierarchical templates.
+        """
+        import traceback as tb_module
+        import os
+        from datetime import datetime
+        
+        # Get current timestamp
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        
+        # Extract call stack information
+        call_stack = self._extract_call_stack(exc_traceback)
+        
+        # Get local variables from the error location
+        local_vars = self._extract_local_variables(exc_traceback)
+        
+        # Build hierarchical exception output
+        lines = []
+        
+        # Header with timestamp and error type
+        lines.append(f"┌─ {timestamp} | ❌ ERROR | {self._get_calling_module_name(exc_traceback)} | Unhandled {exc_type.__name__}: {str(exc_value)}")
+        
+        # Exception details section
+        lines.append("├─ Exception Details:")
+        lines.append(f"│  ├─ Type: {exc_type.__name__}")
+        lines.append(f"│  ├─ Message: {str(exc_value)}")
+        lines.append(f"│  └─ Thread: {threading.current_thread().name}")
+        
+        # Call stack section with clickable file links
+        if call_stack:
+            lines.append("├─ Call Stack:")
+            for i, (filename, lineno, function, code) in enumerate(call_stack):
+                is_last = i == len(call_stack) - 1
+                prefix = "│  └─" if is_last else "│  ├─"
+                
+                # Use standard Python traceback format for IDE clickability
+                file_link = f'File "{filename}", line {lineno}, in {function}'
+                lines.append(f"{prefix} {file_link}")
+                
+                # Add code context if available
+                if code and code.strip():
+                    code_prefix = "   " if is_last else "│     "
+                    lines.append(f"{code_prefix}    {code.strip()}")
+        
+        # Local variables section (if available)
+        if local_vars:
+            lines.append("├─ Local Variables:")
+            var_items = list(local_vars.items())
+            for i, (name, value) in enumerate(var_items):
+                is_last = i == len(var_items) - 1
+                prefix = "│  └─" if is_last else "│  ├─"
+                lines.append(f"{prefix} {name}: {self._safe_repr(value)}")
+        
+        # Footer
+        lines.append("└─" + "─" * 50)
+        
+        # Join lines and prepend newline for proper separation
+        formatted_output = "\n".join(lines)
+        return '\n' + formatted_output
+    
+    def _extract_call_stack(self, exc_traceback: Any) -> list:
+        """Extract call stack information maintaining file path format for IDE links."""
+        import traceback as tb_module
+        
+        call_stack = []
+        tb = exc_traceback
+        
+        while tb is not None:
+            frame = tb.tb_frame
+            filename = frame.f_code.co_filename
+            lineno = tb.tb_lineno
+            function = frame.f_code.co_name
+            
+            # Get the source code line
+            import linecache
+            code = linecache.getline(filename, lineno)
+            
+            call_stack.append((filename, lineno, function, code))
+            tb = tb.tb_next
+            
+        return call_stack
+    
+    def _extract_local_variables(self, exc_traceback: Any) -> dict:
+        """Extract local variables from the last frame (error location)."""
+        if not exc_traceback:
+            return {}
+            
+        # Get the last frame (where the error occurred)
+        tb = exc_traceback
+        while tb.tb_next is not None:
+            tb = tb.tb_next
+            
+        frame = tb.tb_frame
+        local_vars = {}
+        
+        # Extract simple local variables (avoid complex objects)
+        for name, value in frame.f_locals.items():
+            if not name.startswith('_') and isinstance(value, (str, int, float, bool, list, dict, tuple)):
+                try:
+                    # Limit size to prevent huge outputs
+                    str_repr = repr(value)
+                    if len(str_repr) <= 200:
+                        local_vars[name] = value
+                except Exception:
+                    pass
+                    
+        return local_vars
+    
+    def _safe_repr(self, value) -> str:
+        """Safely represent a value, truncating if too long."""
+        try:
+            repr_str = repr(value)
+            if len(repr_str) > 150:
+                return repr_str[:147] + "..."
+            return repr_str
+        except Exception:
+            return f"<unprintable {type(value).__name__} object>"
+    
+    def _extract_rich_context(self, exc_type: Type[BaseException], exc_value: BaseException, exc_traceback: Any) -> dict:
+        """Extract rich context information from exception and traceback."""
+        import traceback as tb_module
+        
         context = {
             "exception_type": exc_type.__name__,
-            "exception_module": getattr(exc_type, '__module__', 'builtins'),
+            "exception_message": str(exc_value),
             "thread_name": threading.current_thread().name,
-            "thread_id": threading.get_ident()
         }
         
-        # Log the exception with beautiful formatting
-        self.logger.bind(**context).opt(exception=(exc_type, exc_value, exc_traceback)).critical(
-            "Unhandled exception occurred"
-        )
-        
-        # Call original hook for any additional handling
-        if self.original_hook:
-            self.original_hook(exc_type, exc_value, exc_traceback)
+        if exc_traceback:
+            # Extract file and line information
+            tb_list = tb_module.extract_tb(exc_traceback)
+            if tb_list:
+                last_frame = tb_list[-1]
+                context.update({
+                    "error_file": last_frame.filename.split('\\')[-1] if '\\' in last_frame.filename else last_frame.filename.split('/')[-1],
+                    "error_line": last_frame.lineno,
+                    "error_function": last_frame.name,
+                    "code_context": last_frame.line.strip() if last_frame.line else "N/A"
+                })
+                
+                # Add call stack depth
+                context["stack_depth"] = len(tb_list)
+                
+        return context
+    
+    def _get_calling_module_name(self, exc_traceback: Any) -> str:
+        """Get the module name where the exception originated."""
+        if not exc_traceback:
+            return "__main__"
+            
+        import traceback as tb_module
+        tb_list = tb_module.extract_tb(exc_traceback)
+        if tb_list:
+            last_frame = tb_list[-1]
+            filename = last_frame.filename
+            # Extract module name from file path
+            if '\\' in filename or '/' in filename:
+                module_name = filename.split('\\')[-1] if '\\' in filename else filename.split('/')[-1]
+                module_name = module_name.replace('.py', '')
+                return module_name
+                
+        return "__main__"
             
     def _handle_threading_exception(self, args) -> None:
         """
