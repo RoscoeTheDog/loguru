@@ -1,0 +1,15 @@
+# Loguru - Enhanced Logging with Templates, Tracing, and Analysis
+# Core dependencies (automatically installed with loguru)
+
+# Windows dependencies
+colorama>=0.3.4 ; sys_platform=='win32'
+win32-setctime>=1.0.0 ; sys_platform=='win32'
+
+# Note: Development dependencies are in pyproject.toml
+# Install dev dependencies with: pip install -e ".[dev]"
+
+# For development:
+# - Testing: pytest, pytest-cov
+# - Linting: black, ruff, mypy
+# - Docs: Sphinx, sphinx-rtd-theme, myst-parser
+# See pyproject.toml [project.optional-dependencies] for full list
