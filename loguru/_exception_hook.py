@@ -67,11 +67,10 @@ class GlobalExceptionHook:
     def _handle_exception(self, exc_type: Type[BaseException], exc_value: BaseException, exc_traceback: Any) -> None:
         """
         Handle unhandled exceptions with unified hierarchical formatting and clickable file links.
-        
-        This implementation eliminates duplicate traceback output by completely replacing
-        the standard Python traceback with a hierarchical format that maintains IDE
-        hyperlink compatibility through the standard 'File "path", line X' pattern.
-        
+
+        This implementation uses the logger with bind() to add exception context,
+        then logs with opt(exception=...) for proper formatting.
+
         Args:
             exc_type: Exception type
             exc_value: Exception instance
@@ -82,15 +81,14 @@ class GlobalExceptionHook:
             if self.original_hook:
                 self.original_hook(exc_type, exc_value, exc_traceback)
             return
-            
-        # Format the exception using hierarchical style with embedded traceback
-        formatted_exception = self._format_hierarchical_exception(exc_type, exc_value, exc_traceback)
-        
-        # Output the formatted exception directly to stderr
-        print(formatted_exception, file=sys.stderr)
-        
-        # DO NOT call original hook - this prevents duplicate traceback output
-        # The hierarchical format contains all the information from the standard traceback
+
+        # Extract rich context for binding
+        context = self._extract_rich_context(exc_type, exc_value, exc_traceback)
+
+        # Log through logger with context and exception info
+        self.logger.bind(**context).opt(exception=(exc_type, exc_value, exc_traceback)).error(
+            f"Unhandled {exc_type.__name__}: {str(exc_value)}"
+        )
     
     def _format_hierarchical_exception(self, exc_type: Type[BaseException], exc_value: BaseException, exc_traceback: Any) -> str:
         """
