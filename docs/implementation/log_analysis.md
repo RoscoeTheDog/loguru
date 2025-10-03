@@ -533,22 +533,6 @@ def analyze_error_trends():
     print(f"Error rate trend: {errors['error_rate']:.1f}%")
 ```
 
-## 🔄 Migration from logging_suite
-
-For users migrating from logging_suite, the loguru analysis toolkit provides equivalent functionality:
-
-### Feature Mapping
-- **logging_suite metrics** → `analyze_log_file()`
-- **logging_suite patterns** → `find_log_patterns()`
-- **logging_suite reports** → `generate_report()`
-- **logging_suite health** → `check_health()`
-
-### Migration Steps
-1. Replace logging_suite imports with loguru analysis functions
-2. Update file paths to point to loguru JSON files
-3. Adapt any custom analysis code to use new API
-4. Test analysis results against existing baselines
-
 ---
 
 The loguru log analysis toolkit provides enterprise-grade log analysis capabilities while maintaining the simplicity and elegance that makes loguru popular. Whether you're debugging in development or monitoring production systems, these tools help you understand what your logs are telling you.
