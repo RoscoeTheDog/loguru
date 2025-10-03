@@ -28,6 +28,8 @@ Did you ever feel lazy about configuring a logger and used `print()` instead?...
 
 Also, this library is intended to make Python logging less painful by adding a bunch of useful functionalities that solve caveats of the standard loggers. Using logs in your application should be an automatism, **Loguru** tries to make it both pleasant and powerful.
 
+🎨 **New in this version**: Loguru now includes a **beautiful template-based styling system** with smart context recognition, advanced function tracing, and global exception hooks - all while maintaining 100% backward compatibility. Get gorgeous, informative logs with zero configuration!
+
 <!-- end-of-readme-intro -->
 
 ## Installation
@@ -40,6 +42,10 @@ pip install loguru
 
 - [Ready to use out of the box without boilerplate](#ready-to-use-out-of-the-box-without-boilerplate)
 - [No Handler, no Formatter, no Filter: one function to rule them all](#no-handler-no-formatter-no-filter-one-function-to-rule-them-all)
+- [Beautiful template-based styling system](#beautiful-template-based-styling-system) 🆕
+- [Smart context auto-styling and recognition](#smart-context-auto-styling-and-recognition) 🆕
+- [Advanced function tracing and performance monitoring](#advanced-function-tracing-and-performance-monitoring) 🆕
+- [Global exception hook integration](#global-exception-hook-integration) 🆕
 - [Easier file logging with rotation / retention / compression](#easier-file-logging-with-rotation--retention--compression)
 - [Modern string formatting using braces style](#modern-string-formatting-using-braces-style)
 - [Exceptions catching within threads or main](#exceptions-catching-within-threads-or-main)
@@ -55,6 +61,7 @@ pip install loguru
 - [Personalizable defaults through environment variables](#personalizable-defaults-through-environment-variables)
 - [Convenient parser](#convenient-parser)
 - [Exhaustive notifier](#exhaustive-notifier)
+- [Comprehensive log analysis toolkit](#comprehensive-log-analysis-toolkit) 🆕
 - <s>[10x faster than built-in logging](#10x-faster-than-built-in-logging)</s>
 
 ## Take the tour
@@ -86,6 +93,264 @@ logger.add(sys.stderr, format="{time} {level} {message}", filter="my_module", le
 This function should be used to register [sinks](https://loguru.readthedocs.io/en/stable/api/logger.html#sink) which are responsible for managing [log messages](https://loguru.readthedocs.io/en/stable/api/logger.html#message) contextualized with a [record dict](https://loguru.readthedocs.io/en/stable/api/logger.html#record). A sink can take many forms: a simple function, a string path, a file-like object, a coroutine function or a built-in Handler.
 
 Note that you may also [`remove()`](https://loguru.readthedocs.io/en/stable/api/logger.html#loguru._logger.Logger.remove) a previously added handler by using the identifier returned while adding it. This is particularly useful if you want to supersede the default `stderr` handler: just call `logger.remove()` to make a fresh start.
+
+### Beautiful template-based styling system
+
+Loguru now includes a powerful template-based styling system that provides beautiful, hierarchical output with zero configuration. The template system automatically enhances your logs with intelligent styling while maintaining full backward compatibility.
+
+#### Zero-config beautiful output
+
+Simply use loguru as always, and get beautiful styled output automatically:
+
+```python
+from loguru import logger
+
+# Beautiful output by default
+logger.info("Application started")
+logger.bind(user="alice", action="login").info("User logged in")
+logger.error("Database connection failed")
+```
+
+#### Configure beautiful styling
+
+Use the new `configure_style()` method for quick template-based setup:
+
+```python
+# Use built-in templates: "beautiful", "minimal", "classic"
+logger.configure_style("beautiful")
+
+# Console and file with different templates
+logger.configure_style(
+    "beautiful", 
+    file_path="app.log", 
+    console_level="INFO", 
+    file_level="DEBUG"
+)
+```
+
+#### Independent console and file formatting
+
+Set up dual-stream logging with different templates for each output:
+
+```python
+logger.configure_streams(
+    console=dict(template="beautiful", level="INFO"),
+    file=dict(sink="app.log", template="minimal", level="DEBUG"),
+    json=dict(sink="data.jsonl", serialize=True)
+)
+```
+
+#### Runtime template switching
+
+Switch templates dynamically at runtime:
+
+```python
+# Per-message template override
+logger.bind(template="minimal").info("Simple output")
+
+# Change default template
+handler_id = logger.add(sys.stderr, format="{time} | {level} | {message}")
+logger.set_template(handler_id, "beautiful")
+```
+
+### Smart context auto-styling and recognition
+
+Loguru's smart context engine automatically detects and styles different types of content in your log messages, making important information stand out without any configuration.
+
+#### Automatic pattern recognition
+
+The system recognizes 15+ context types and applies appropriate styling:
+
+```python
+logger.info("User john@example.com logged in from 192.168.1.1")
+# Automatically styles: email addresses, IP addresses
+
+logger.info("Processing order #12345 for $1,234.56")
+# Automatically styles: order numbers, currency amounts
+
+logger.info("GET /api/users/123 returned 404")
+# Automatically styles: HTTP methods, API endpoints, status codes
+
+logger.info("Error in /home/user/app.py at line 42")
+# Automatically styles: file paths, line numbers
+```
+
+#### Contextual information enhancement
+
+Use context binding to provide rich, styled information:
+
+```python
+logger.bind(
+    user="alice", 
+    ip="10.0.1.100", 
+    action="purchase",
+    amount="$99.99"
+).info("Transaction completed successfully")
+
+# Smart styling automatically applied to context values
+```
+
+#### Adaptive learning system
+
+The context engine learns from your usage patterns and improves recognition over time:
+
+```python
+from loguru._context_styling import AdaptiveContextEngine
+
+# Engine adapts to your application's specific patterns
+engine = AdaptiveContextEngine()
+# Learns domain-specific terms and improves styling accuracy
+```
+
+### Advanced function tracing and performance monitoring
+
+Loguru provides sophisticated function tracing with pattern matching, performance monitoring, and configurable behavior - perfect for debugging and performance analysis.
+
+#### Basic function tracing
+
+Trace function execution with beautiful, template-styled output:
+
+```python
+from loguru._tracing import FunctionTracer
+
+tracer = FunctionTracer(logger, "beautiful")
+
+@tracer.trace
+def process_order(order_id, customer_id):
+    # Function entry/exit automatically logged with arguments
+    return f"Order {order_id} processed for customer {customer_id}"
+
+result = process_order("12345", "alice")
+```
+
+#### Pattern-based tracing rules
+
+Configure tracing behavior based on function name patterns:
+
+```python
+tracer = FunctionTracer(logger)
+
+# Trace all test functions with full details
+tracer.add_rule(
+    pattern=r"^test_.*",
+    log_args=True,
+    log_result=True,
+    log_duration=True,
+    level="DEBUG"
+)
+
+# Disable tracing for private functions
+tracer.add_rule(pattern=r"^_.*", enabled=False)
+
+@tracer.trace
+def test_user_login():  # Will be traced with full details
+    return authenticate_user("alice")
+
+@tracer.trace  
+def _helper_function():  # Will not be traced
+    return "internal logic"
+```
+
+#### Performance monitoring
+
+Monitor function performance with automatic threshold alerts:
+
+```python
+from loguru._tracing import PerformanceTracer
+
+perf_tracer = PerformanceTracer(logger)
+
+@perf_tracer.trace_performance(threshold_ms=500)
+def slow_database_query():
+    # Automatic performance alert if takes > 500ms
+    time.sleep(0.6)  # Simulated slow operation
+    return "query results"
+
+# Get performance statistics
+stats = perf_tracer.get_performance_stats("slow_database_query")
+print(f"Average: {stats['avg_ms']}ms, Max: {stats['max_ms']}ms")
+```
+
+#### Pre-configured tracers
+
+Use development and production optimized tracers:
+
+```python
+from loguru._tracing import create_development_tracer, create_production_tracer
+
+# Development: verbose tracing with full details
+dev_tracer = create_development_tracer(logger)
+
+# Production: minimal tracing, performance focused
+prod_tracer = create_production_tracer(logger)
+```
+
+### Global exception hook integration
+
+Loguru can automatically capture and beautifully format all unhandled exceptions in your application, including those in threads, with template-based styling.
+
+#### Basic exception hook
+
+Install a global exception hook for beautiful error reporting:
+
+```python
+from loguru._exception_hook import install_exception_hook
+
+# Install global exception hook with template styling
+hook = install_exception_hook(logger, template="beautiful")
+
+# Now all unhandled exceptions are beautifully formatted
+def risky_function():
+    return 1 / 0  # This will be caught and styled
+
+risky_function()  # Beautiful exception output with context
+```
+
+#### Context manager for temporary hooks
+
+Use exception hooks temporarily for specific code blocks:
+
+```python
+from loguru._exception_hook import ExceptionContext
+
+with ExceptionContext(logger, "beautiful") as ctx:
+    # Any unhandled exception in this block gets beautiful formatting
+    risky_operation()
+    another_risky_operation()
+# Hook automatically removed when exiting context
+```
+
+#### Smart exception filtering
+
+Use advanced exception hooks with filtering and context extraction:
+
+```python
+from loguru._exception_hook import create_development_hook
+
+# Development hook with enhanced context extraction
+dev_hook = create_development_hook(logger)
+dev_hook.install()
+
+# Captures local variables and provides rich debugging context
+```
+
+#### Thread-aware exception handling
+
+The exception hook system automatically handles both main thread and background thread exceptions:
+
+```python
+import threading
+
+# Hook captures exceptions from all threads
+hook = install_exception_hook(logger, "beautiful")
+
+def background_task():
+    raise ValueError("Background thread error")  # Also captured!
+
+thread = threading.Thread(target=background_task)
+thread.start()
+thread.join()
+```
 
 ### Easier file logging with rotation / retention / compression
 
@@ -352,6 +617,141 @@ export LOGURU_FORMAT="{time} | <lvl>{message}</lvl>"
 setx LOGURU_DEBUG_COLOR "<green>"
 ```
 
+### Comprehensive log analysis toolkit
+
+Loguru includes a powerful log analysis toolkit that works with both JSON-serialized logs and standard text logs, providing enterprise-grade analysis capabilities for debugging, monitoring, and performance optimization.
+
+#### Quick analysis with built-in functions
+
+Analyze your log files instantly using Loguru's built-in analysis functions:
+
+```python
+from loguru import logger, analyze_log_file, quick_stats, check_health
+
+# Quick overview of any log file
+stats = quick_stats("application.log")
+print(stats)  # "Total: 1,234 | Error Rate: 2.3% | Time Range: ... | Top Module: auth"
+
+# Comprehensive health check
+health = check_health("application.log")
+print(f"Health Score: {health['health_score']}/100 ({health['status']})")
+
+if health['issues']:
+    print("Issues found:")
+    for issue in health['issues']:
+        print(f"- {issue}")
+
+# Detailed analysis
+results = analyze_log_file("application.log")
+print(f"Total entries: {results['total_entries']:,}")
+print(f"Error rate: {results['error_rate']:.1f}%")
+print(f"Performance: {results['performance']['avg_duration']:.3f}s avg")
+```
+
+#### Specialized analysis functions
+
+Target specific aspects of your logs with specialized analysis:
+
+```python
+from loguru import get_error_summary, get_performance_summary, find_log_patterns
+
+# Error-focused analysis
+errors = get_error_summary("application.log")
+print(f"Errors: {errors['error_count']}, Rate: {errors['error_rate']:.1f}%")
+print("Top error patterns:", errors['top_error_patterns'])
+
+# Performance analysis 
+perf = get_performance_summary("application.log")
+print(f"Avg duration: {perf['avg_duration']:.3f}s")
+print(f"Slow operations: {perf['slow_operations']}")
+
+# Pattern matching with regex
+database_errors = find_log_patterns("application.log", r"database.*error")
+for error in database_errors[-5:]:  # Last 5 database errors
+    print(f"{error['timestamp']} - {error['message']}")
+```
+
+#### Command-line analysis tool
+
+Analyze logs directly from the command line with the included CLI tool:
+
+```bash
+# Basic analysis
+python analyze_logs.py application.log
+
+# Filter by error level
+python analyze_logs.py --level ERROR application.log
+
+# Search for patterns
+python analyze_logs.py --pattern "database.*failed" application.log
+
+# Generate comprehensive reports
+python analyze_logs.py --all-reports application.log
+
+# Save analysis to file
+python analyze_logs.py --summary -o report.txt application.log
+
+# Analyze multiple files together
+python analyze_logs.py app.log background.log api.log
+```
+
+#### Multi-format support
+
+The analysis toolkit works seamlessly with different log formats:
+
+```python
+# JSON-serialized logs (recommended for structured analysis)
+logger.add("structured.log", serialize=True)
+results = analyze_log_file("structured.log")  # Rich metadata available
+
+# Standard text logs (human-readable format)
+logger.add("readable.log", format="{time} | {level} | {message}")
+results = analyze_log_file("readable.log")  # Basic analysis available
+
+# Mixed analysis across formats
+from loguru import analyze_log_files
+combined = analyze_log_files(["structured.log", "readable.log"])
+```
+
+#### Report generation
+
+Generate detailed reports for stakeholders and documentation:
+
+```python
+from loguru import generate_report
+
+# Different report types
+summary = generate_report("app.log", "summary")
+time_analysis = generate_report("app.log", "time") 
+error_analysis = generate_report("app.log", "error")
+context_analysis = generate_report("app.log", "context")
+
+# Save comprehensive report
+comprehensive = generate_report("app.log", "all", "full_analysis.txt")
+```
+
+#### Production monitoring integration
+
+Integrate log analysis with your monitoring systems:
+
+```python
+import schedule
+from loguru import check_health, get_error_summary
+
+def daily_log_health_check():
+    health = check_health("production.log")
+    errors = get_error_summary("production.log")
+    
+    if health['status'] == 'critical':
+        send_alert(f"Critical log issues: {health['issues']}")
+    elif errors['error_rate'] > 5.0:
+        send_warning(f"High error rate: {errors['error_rate']:.1f}%")
+
+schedule.every().day.at("09:00").do(daily_log_health_check)
+```
+
+The analysis toolkit supports both development debugging and production monitoring scenarios, with automatic pattern detection, performance analysis, and health scoring systems that help you understand what your logs are telling you.
+
 ### Convenient parser
 
 It is often useful to extract specific information from generated logs, this is why Loguru provides a [`parse()`](https://loguru.readthedocs.io/en/stable/api/logger.html#loguru._logger.Logger.parse) method which helps to deal with logs and regexes.
@@ -397,11 +797,136 @@ Although logging impact on performances is in most cases negligible, a zero-cost
 
 <!-- end-of-readme-usage -->
 
+## New Template System Migration
+
+The new template system is **100% backward compatible** - all existing loguru code continues to work unchanged. You can gradually adopt the new features:
+
+### Instant Enhancement
+```python
+# Your existing code works unchanged
+from loguru import logger
+logger.info("This still works exactly as before")
+
+# But now gets beautiful styling automatically with templates enabled
+logger.configure_style("beautiful")
+logger.info("This now has beautiful styled output!")
+```
+
+### Available Templates
+
+- **`beautiful`**: Elegant hierarchical styling with rich colors and Unicode symbols
+- **`minimal`**: Clean, minimal styling for production environments  
+- **`classic`**: Traditional logging appearance with basic styling
+
+### New API Methods
+
+The template system adds three new optional methods to the Logger class:
+
+- **`configure_style(template, file_path=None, console_level="INFO", file_level="DEBUG")`**: Quick setup with template styling
+- **`configure_streams(**streams)`**: Configure multiple output streams with different templates
+- **`set_template(handler_id, template_name)`**: Change template for an existing handler
+
+### Performance
+
+The template system is highly optimized with:
+- **Caching**: Template results cached to reduce repeated computation
+- **Pre-compilation**: Regex patterns compiled once and reused
+- **Smart detection**: Minimal overhead when templates are disabled
+- **Backward compatibility**: Zero overhead for existing code
+
 ## Documentation
 
 - [API Reference](https://loguru.readthedocs.io/en/stable/api/logger.html)
+- [Template System Guide](#beautiful-template-based-styling-system) 🆕
+- [Function Tracing Guide](#advanced-function-tracing-and-performance-monitoring) 🆕
+- [Exception Hook Guide](#global-exception-hook-integration) 🆕
+- [Log Analysis Toolkit Guide](#comprehensive-log-analysis-toolkit) 🆕
 - [Help & Guides](https://loguru.readthedocs.io/en/stable/resources.html)
 - [Type hints](https://loguru.readthedocs.io/en/stable/api/type_hints.html)
 - [Contributing](https://loguru.readthedocs.io/en/stable/project/contributing.html)
 - [License](https://loguru.readthedocs.io/en/stable/project/license.html)
 - [Changelog](https://loguru.readthedocs.io/en/stable/project/changelog.html)
+
+## Log Analysis API Reference
+
+The following analysis functions are available directly from the loguru package:
+
+### Core Analysis Functions
+
+#### `analyze_log_file(file_path: str) -> Dict[str, Any]`
+Comprehensive analysis of a single log file, supporting both JSON and text formats.
+
+**Returns:**
+- `total_entries`: Total number of log entries
+- `level_counts`: Count of each log level  
+- `error_rate`: Percentage of ERROR/CRITICAL entries
+- `time_range`: Start time, end time, and duration
+- `top_modules`: Most active modules
+- `top_functions`: Most frequently logged functions
+- `performance`: Timing statistics if available
+- `hourly_distribution`: Entry counts by hour
+- `daily_distribution`: Entry counts by day
+
+#### `analyze_log_files(file_paths: List[str]) -> Dict[str, Any]`
+Combined analysis across multiple log files with aggregated metrics.
+
+#### `quick_stats(file_path: str) -> str`
+Returns essential statistics as a formatted one-line string.
+
+#### `check_health(file_path: str) -> Dict[str, Any]`
+Performs health assessment with scoring and issue identification.
+
+**Returns:**
+- `health_score`: Score from 0-100
+- `status`: 'healthy', 'warning', or 'critical'  
+- `issues`: List of identified problems
+- `error_rate`: Current error percentage
+- `avg_performance`: Average execution time
+
+### Specialized Analysis Functions
+
+#### `get_error_summary(file_path: str) -> Dict[str, Any]`
+Error-focused analysis including patterns and exception types.
+
+#### `get_performance_summary(file_path: str) -> Dict[str, Any]`  
+Performance metrics including timing statistics and thresholds.
+
+#### `find_log_patterns(file_path: str, pattern: str) -> List[Dict[str, Any]]`
+Search for entries matching a regex pattern.
+
+#### `get_time_distribution(file_path: str, granularity: str = 'hour') -> Dict[str, int]`
+Time-based distribution analysis ('hour', 'day', 'minute').
+
+#### `generate_report(file_path: str, report_type: str = 'summary', output_file: str = None) -> str`
+Generate formatted analysis reports.
+
+**Report Types:**
+- `'summary'`: Overview with key metrics
+- `'time'`: Time-based analysis
+- `'error'`: Error-focused analysis  
+- `'context'`: Context field analysis
+- `'all'`: Combined comprehensive report
+
+### Usage Examples
+
+```python
+from loguru import logger, analyze_log_file, check_health, quick_stats
+
+# Quick analysis
+print(quick_stats("app.log"))
+
+# Health monitoring
+health = check_health("app.log")
+if health['status'] != 'healthy':
+    print(f"Issues: {health['issues']}")
+
+# Detailed analysis  
+results = analyze_log_file("app.log")
+print(f"Entries: {results['total_entries']}")
+print(f"Error rate: {results['error_rate']:.1f}%")
+
+# Error investigation
+from loguru import get_error_summary, find_log_patterns
+errors = get_error_summary("app.log")
+db_errors = find_log_patterns("app.log", r"database.*error")
+```

@@ -13,7 +13,32 @@ from ._logger import Logger as _Logger
 
 __version__ = "0.7.3"
 
-__all__ = ["logger"]
+# Import log analysis functionality
+from ._log_metrics import (
+    analyze_log_file,
+    analyze_log_files,
+    get_error_summary,
+    get_performance_summary,
+    find_log_patterns,
+    get_time_distribution,
+    generate_report,
+    quick_stats,
+    check_health
+)
+
+__all__ = [
+    "logger",
+    # Analysis functions
+    "analyze_log_file",
+    "analyze_log_files", 
+    "get_error_summary",
+    "get_performance_summary",
+    "find_log_patterns",
+    "get_time_distribution",
+    "generate_report",
+    "quick_stats",
+    "check_health"
+]
 
 logger = _Logger(
     core=_Core(),
