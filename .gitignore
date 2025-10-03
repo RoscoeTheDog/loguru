@@ -102,3 +102,30 @@ ENV/
 
 # Idea IDE
 .idea/
+
+# Debug and development files
+/debug/
+/examples/*.log
+
+# Claude AI context and configuration
+.claude/
+*.claude.*
+.claudeignore
+.serena/
+claude-context/
+.cursor/
+
+# IDE files (additional to existing .idea/)
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Python IDE
+.pytype/
+.pyre/
+
+# Additional development artifacts
+*.bak
+.ccls-cache/
