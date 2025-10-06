@@ -11,16 +11,83 @@ from ._locks_machinery import create_handler_lock
 
 
 def prepare_colored_format(format_, ansi_level):
-    colored = Colorizer.prepare_format(format_)
-    return colored, colored.colorize(ansi_level)
+    """
+    Prepare a format for colorization.
+    
+    Handles both format strings and custom format functions (callables).
+    For callables, returns a wrapper that preserves function behavior.
+    
+    Fixes #2: KeyError when using callable formats with exceptions
+    """
+    # Check if format_ is a callable (custom format function)
+    if callable(format_):
+        # Return a wrapper that preserves the function behavior
+        # The function itself handles all formatting and colorization
+        class CallableFormatWrapper:
+            """Wrapper for custom format functions to work with loguru's format pipeline."""
+            def __init__(self, func):
+                self.func = func
+                # Provide empty tokens for compatibility
+                self.tokens = []
+                self.messages_color_tokens = []
+            
+            def format_map(self, record):
+                """Call the format function directly with the record."""
+                return self.func(record)
+            
+            def colorize(self, ansi_level):
+                """Return self since function handles its own colorization."""
+                return self
+            
+            def strip(self):
+                """Return stripped version (returns self for functions)."""
+                return self
+        
+        wrapper = CallableFormatWrapper(format_)
+        return wrapper, wrapper
+    else:
+        # Original behavior for format strings
+        colored = Colorizer.prepare_format(format_)
+        return colored, colored.colorize(ansi_level)
 
 
 def prepare_stripped_format(format_):
-    colored = Colorizer.prepare_format(format_)
-    return colored.strip()
+    """
+    Prepare a stripped format (no colors).
+    
+    Handles both format strings and custom format functions (callables).
+    
+    Fixes #2: KeyError when using callable formats with exceptions
+    """
+    # Check if format_ is a callable (custom format function)
+    if callable(format_):
+        # Return a wrapper that preserves the function behavior
+        class CallableFormatWrapper:
+            """Wrapper for custom format functions to work with loguru's format pipeline."""
+            def __init__(self, func):
+                self.func = func
+                self.tokens = []
+                self.messages_color_tokens = []
+            
+            def format_map(self, record):
+                """Call the format function directly with the record."""
+                return self.func(record)
+            
+            def strip(self):
+                """Return self for consistency."""
+                return self
+        
+        return CallableFormatWrapper(format_)
+    else:
+        # Original behavior for format strings
+        colored = Colorizer.prepare_format(format_)
+        return colored.strip()
 
 
 def memoize(function):
+    return functools.lru_cache(maxsize=64)(function)
+
+
     return functools.lru_cache(maxsize=64)(function)
 
 
