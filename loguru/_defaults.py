@@ -76,4 +76,8 @@ LOGURU_CRITICAL_ICON = env("LOGURU_CRITICAL_ICON", str, "\u2620\ufe0f")  # Skull
 
 # Format string recursion depth for complex nested format specifications
 # Increase if you encounter "Max string recursion exceeded" errors with deeply nested formats
-LOGURU_FORMAT_RECURSION_DEPTH = env("LOGURU_FORMAT_RECURSION_DEPTH", int, 20)
+LOGURU_FORMAT_RECURSION_DEPTH = env("LOGURU_FORMAT_RECURSION_DEPTH", int, 200)
+# Default: 200 (lenient, handles deep exception tracebacks and recursive algorithms)
+# Usage: export LOGURU_FORMAT_RECURSION_DEPTH=500  (before running your script)
+# Or: os.environ['LOGURU_FORMAT_RECURSION_DEPTH'] = '500' (before importing loguru)
+# See: RECURSION_DEPTH_CONFIG.md for detailed configuration guide

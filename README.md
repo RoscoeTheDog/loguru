@@ -614,6 +614,37 @@ Don't like the default logger formatting? Would prefer another `DEBUG` color? [N
 export LOGURU_FORMAT="{time} | <lvl>{message}</lvl>"
 
 # Windows
+
+#### Format String Recursion Depth
+
+Loguru's format string colorizer uses recursion to parse complex format specifications. If you encounter "Max string recursion exceeded" errors when logging deeply nested data structures or very deep exception tracebacks, you can increase the recursion depth:
+
+```bash
+# Linux / OSX
+export LOGURU_FORMAT_RECURSION_DEPTH=500
+
+# Windows
+setx LOGURU_FORMAT_RECURSION_DEPTH 500
+```
+
+Or configure in Python before importing loguru:
+
+```python
+import os
+os.environ['LOGURU_FORMAT_RECURSION_DEPTH'] = '500'
+
+from loguru import logger
+```
+
+**Default:** `200` (handles most cases including deep exception tracebacks and recursive algorithms)
+
+**When to increase:**
+- Logging recursive search/sort algorithms on large datasets
+- Very deep exception tracebacks (100+ stack frames)
+- Highly nested structured logging context
+
+For more details, see [RECURSION_DEPTH_CONFIG.md](RECURSION_DEPTH_CONFIG.md).
+
 setx LOGURU_DEBUG_COLOR "<green>"
 ```
 
