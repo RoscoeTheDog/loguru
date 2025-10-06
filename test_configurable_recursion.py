@@ -4,7 +4,7 @@ import sys
 
 # Test 1: Default recursion depth (20)
 print("="*80)
-print("TEST 1: Default recursion depth (LOGURU_FORMAT_RECURSION_DEPTH=20)")
+print("TEST 1: Default recursion depth (LOGURU_FORMAT_RECURSION_DEPTH=200)")
 print("="*80)
 
 from loguru import logger
@@ -40,7 +40,7 @@ print("\n" + "="*80)
 print("CONFIGURATION TEST COMPLETE")
 print("="*80)
 print("OK - Recursion depth is now configurable via LOGURU_FORMAT_RECURSION_DEPTH")
-print("OK - Default value: 20 (suitable for most use cases)")
+print("OK - Default value: 200 (lenient, handles deep tracebacks and recursive algorithms)")
 print("OK - Can be increased for deeply nested format specifications")
 print("OK - Follows loguru's environment variable convention")
 print("="*80)

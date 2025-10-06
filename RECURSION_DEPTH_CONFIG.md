@@ -8,10 +8,10 @@ Loguru's colorizer uses recursion to parse complex format specifications. The re
 
 **Default:** `20`
 
-This value is suitable for most use cases, including:
+This lenient default handles most use cases, including:
 - Standard logging messages
 - Moderate exception tracebacks
-- Nested context data (up to ~20 levels deep)
+- Nested context data (including very deep nesting)
 
 ## Configuration
 
@@ -45,10 +45,10 @@ Increase the recursion depth if you encounter:
 
 | Use Case | Recommended Value |
 |----------|-------------------|
-| Simple logging | `20` (default) |
-| Complex exception tracebacks | `50` |
-| Very deep recursion errors | `100` |
-| Extreme edge cases | `200` |
+| Standard logging | `200` (default) |
+| Reduce for performance | `50` |
+| Very deep recursion errors | `500` |
+| Extreme edge cases | `1000` |
 
 ## Example
 
@@ -79,7 +79,7 @@ except ValueError:
 - **Lower values** (10-20): Faster parsing, less memory usage
 - **Higher values** (50-200): Slower parsing, more memory usage, handles complex cases
 
-The default of `20` balances performance and functionality for typical applications.
+The default of `200` provides lenient handling for edge cases for typical applications.
 
 ## Troubleshooting
 
