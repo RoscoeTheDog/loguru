@@ -409,7 +409,7 @@ class Colorizer:
 
     @staticmethod
     def _parse_with_formatting(
-        string, args, kwargs, *, recursion_depth=2, auto_arg_index=0, recursive=False
+        string, args, kwargs, *, recursion_depth=200, auto_arg_index=0, recursive=False
     ):
         # This function re-implements Formatter._vformat()
 
@@ -469,7 +469,7 @@ class Colorizer:
         return tokens
 
     @staticmethod
-    def _parse_without_formatting(string, *, recursion_depth=2, recursive=False):
+    def _parse_without_formatting(string, *, recursion_depth=200, recursive=False):
         if recursion_depth < 0:
             raise ValueError("Max string recursion exceeded")
 
