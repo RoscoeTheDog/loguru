@@ -73,3 +73,7 @@ LOGURU_ERROR_ICON = env("LOGURU_ERROR_ICON", str, "\u274c")  # Cross Mark
 LOGURU_CRITICAL_NO = env("LOGURU_CRITICAL_NO", int, 50)
 LOGURU_CRITICAL_COLOR = env("LOGURU_CRITICAL_COLOR", str, "<RED><bold>")
 LOGURU_CRITICAL_ICON = env("LOGURU_CRITICAL_ICON", str, "\u2620\ufe0f")  # Skull and Crossbones
+
+# Format string recursion depth for complex nested format specifications
+# Increase if you encounter "Max string recursion exceeded" errors with deeply nested formats
+LOGURU_FORMAT_RECURSION_DEPTH = env("LOGURU_FORMAT_RECURSION_DEPTH", int, 20)
